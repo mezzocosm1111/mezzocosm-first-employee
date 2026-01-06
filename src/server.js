@@ -159,7 +159,15 @@ wss.on("connection", (twilioWs) => {
 
         openaiWs.send(JSON.stringify(sessionConfig));
 
-        // Optional: Send initial greeting triggers here if needed
+        // Trigger the initial greeting from the AI
+        const initialGreeting = {
+            type: "response.create",
+            response: {
+                modalities: ["text", "audio"],
+                instructions: "Say exactly: 'Good morning, you've reached Mezzo. How can I help you today?'",
+            },
+        };
+        openaiWs.send(JSON.stringify(initialGreeting));
     });
 
     // Twilio -> OpenAI
