@@ -54,6 +54,14 @@ app.get("/", (req, res) => {
     res.status(200).send(`OK - ${VERSION} active`);
 });
 
+app.get("/health", (req, res) => {
+    res.status(200).json({
+        status: "ok",
+        service: VERSION,
+        uptime: process.uptime()
+    });
+});
+
 /**
  * Chat Endpoint (for n8n / SMS)
  * Usage: POST /chat { "message": "User text here" }
@@ -240,4 +248,12 @@ wss.on("connection", (twilioWs) => {
 // Start
 server.listen(PORT, () => {
     console.log(`[${VERSION}] Server listening on port ${PORT}`);
+});
+
+process.on("SIGTERM", () => {
+    console.log("SIGTERM received. Shutting down gracefully...");
+    server.close(() => {
+        console.log("HTTP server closed.");
+        process.exit(0);
+    });
 });
