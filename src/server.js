@@ -152,6 +152,7 @@ wss.on("connection", (twilioWs) => {
         const sessionConfig = {
             type: "session.update",
             session: {
+                modalities: ["text", "audio"],
                 voice: VOICE,
                 instructions: systemInstructions,
                 input_audio_format: "g711_ulaw",
