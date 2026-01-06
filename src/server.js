@@ -213,6 +213,17 @@ wss.on("connection", (twilioWs) => {
                     };
                     twilioWs.send(JSON.stringify(audioDelta));
                 }
+            } else {
+                if (msg.type === "error") {
+                    console.error("OpenAI Error:", JSON.stringify(msg, null, 2));
+                } else if (msg.type === "response.create") {
+                    console.log("OpenAI Response Created");
+                } else if (msg.type === "session.updated") {
+                    console.log("OpenAI Session Updated");
+                } else {
+                    // Log other interesting events to see if it's working
+                    // console.log("OpenAI Event:", msg.type);
+                }
             }
         } catch (e) {
             console.error("OpenAI message error:", e);
