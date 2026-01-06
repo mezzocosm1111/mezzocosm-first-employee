@@ -205,6 +205,9 @@ wss.on("connection", (twilioWs) => {
             const msg = JSON.parse(data);
 
             if (msg.type === "response.audio.delta" && msg.delta) {
+                // Log that we are receiving audio (limiting spam to 1 in 10 or just ensuring it flows)
+                // console.log("Audio delta received: " + msg.delta.length + " bytes");
+
                 if (twilioWs.readyState === WebSocket.OPEN) {
                     const audioDelta = {
                         event: "media",
