@@ -21,7 +21,7 @@ const KB_PATH = path.join(ROOT_DIR, "sops", "knowledge_base.md");
 const VERSION = "mezzo-brain-v2-unified";
 const PORT = process.env.PORT || 10000;
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-const REALTIME_MODEL = process.env.REALTIME_MODEL || "gpt-4o-realtime-preview-2024-10-01"; // Updated model
+const REALTIME_MODEL = process.env.REALTIME_MODEL || "gpt-4o-realtime-preview"; // Updated to stable alias
 const CHAT_MODEL = process.env.CHAT_MODEL || "gpt-4o";
 const VOICE = process.env.VOICE || "sage"; // "marin" is sometimes deprecated, checking standard voices
 
