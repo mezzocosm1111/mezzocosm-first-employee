@@ -126,7 +126,8 @@ const wss = new WebSocketServer({ server, path: "/twilio" });
 wss.on("connection", (twilioWs) => {
     console.log(`[${VERSION}] Call connected`);
 
-    "\n\n# VOICE SPECIFIC RULES\n" +
+    const systemInstructions = loadSystemPrompt() +
+        "\n\n# VOICE SPECIFIC RULES\n" +
         "You are on the phone. " +
         "Keep responses extremely brief (1-2 sentences). " +
         "Speak LOUDLY and CLEARLY. Use a warm, professional tone." +
