@@ -2,7 +2,8 @@
  * Audio Utility for converting between G.711 u-law (Twilio) and PCM 16-bit (Gemini).
  * USES 'wavefile' LIBRARY FOR HIGH QUALITY RESAMPLING.
  */
-import { WaveFile } from 'wavefile';
+import pkg from 'wavefile';
+const { WaveFile } = pkg;
 
 /**
  * Converts a Buffer of u-law bytes (8kHz) to a Buffer of PCM16LE (16kHz).
