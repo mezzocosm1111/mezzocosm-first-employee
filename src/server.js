@@ -98,12 +98,12 @@ wss.on("connection", (twilioWs) => {
         try {
             const msg = JSON.parse(data);
             if (msg.type === "response.audio.delta" && msg.delta) {
-                console.log("Audio flowing!"); // visual confirmation
+                // Audio flowing!
                 if (twilioWs.readyState === WebSocket.OPEN) {
                     twilioWs.send(JSON.stringify({ event: "media", streamSid, media: { payload: msg.delta } }));
                 }
-            } else if (msg.type === "response.done") {
-                console.log("OpenAI Response Done.");
+            } else {
+                console.log("OpenAI Event:", JSON.stringify(msg, null, 2));
             }
         } catch (e) { console.error(e); }
     });
