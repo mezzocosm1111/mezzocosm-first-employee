@@ -126,10 +126,10 @@ const wss = new WebSocketServer({ server, path: "/twilio" });
 wss.on("connection", (twilioWs) => {
     console.log(`[${VERSION}] Call connected`);
 
-    const systemInstructions = loadSystemPrompt() +
-        "\n\n# VOICE SPECIFIC RULES\n" +
-        "Keep responses extremely brief (1-2 sentences). " +
+    "\n\n# VOICE SPECIFIC RULES\n" +
         "You are on the phone. " +
+        "Keep responses extremely brief (1-2 sentences). " +
+        "Speak LOUDLY and CLEARLY. Use a warm, professional tone." +
         "Use 'g711_ulaw' audio format.";
 
     // Connect to OpenAI Realtime API
@@ -173,7 +173,7 @@ wss.on("connection", (twilioWs) => {
             type: "response.create",
             response: {
                 modalities: ["text", "audio"],
-                instructions: "Say exactly: 'Good morning, you've reached Mezzo. How can I help you today?'",
+                instructions: "Say exactly: 'Hi we're Mezzo. We're a design-build studio specializing in ADUs and small habitats. We're known for our cross disciplinary solutions using wood, steel and glass, with a tech forward approach. We care about performance, healthy materials, and human centered design. We can get started with your project right now if you'd like. Let's start with your name, and your zipcode'",
             },
         };
         openaiWs.send(JSON.stringify(initialGreeting));
@@ -208,14 +208,57 @@ wss.on("connection", (twilioWs) => {
         }
     });
 
+    // --- Timeout & Silence Logic ---
+    const MAX_DURATION = 300000; // 5 minutes
+    const SILENCE_WARNING_MS = 15000; // 15s to ask "Are you there?"
+    const SILENCE_HANGUP_MS = 30000; // 30s total silence to hangup
+
+    let silenceTimer = null;
+
+    const clearSilenceTimer = () => {
+        if (silenceTimer) clearTimeout(silenceTimer);
+    };
+
+    const startSilenceTimer = () => {
+        clearSilenceTimer();
+        silenceTimer = setTimeout(() => {
+            console.log("Silence warning triggered");
+            const warning = {
+                type: "response.create",
+                response: {
+                    modalities: ["text", "audio"],
+                    instructions: "Ask gently: 'Are you still there?'",
+                },
+            };
+            if (openaiWs.readyState === WebSocket.OPEN) openaiWs.send(JSON.stringify(warning));
+
+            // Set final Hangup timer (remaining 15s)
+            silenceTimer = setTimeout(() => {
+                console.log("Silence hangup triggered");
+                if (twilioWs.readyState === WebSocket.OPEN) twilioWs.close();
+            }, SILENCE_HANGUP_MS - SILENCE_WARNING_MS);
+
+        }, SILENCE_WARNING_MS);
+    };
+
+    // Global Call Limit
+    setTimeout(() => {
+        console.log("Max duration reached");
+        if (twilioWs.readyState === WebSocket.OPEN) twilioWs.close();
+    }, MAX_DURATION);
+
+
     // OpenAI -> Twilio
     openaiWs.on("message", (data) => {
         try {
             const msg = JSON.parse(data);
 
             if (msg.type === "response.audio.delta" && msg.delta) {
+                // Audio flowing = Interaction active
+                clearSilenceTimer();
+
                 // Log that we are receiving audio (limiting spam to 1 in 10 or just ensuring it flows)
-                // console.log("Audio delta received: " + msg.delta.length + " bytes");
+                console.log("Audio delta received: " + msg.delta.length + " bytes");
 
                 if (twilioWs.readyState === WebSocket.OPEN) {
                     const audioDelta = {
@@ -232,6 +275,12 @@ wss.on("connection", (twilioWs) => {
                     console.log("OpenAI Response Created");
                 } else if (msg.type === "session.updated") {
                     console.log("OpenAI Session Updated");
+                } else if (msg.type === "response.done") {
+                    console.log("OpenAI Response Done - Waiting for user...");
+                    startSilenceTimer();
+                } else if (msg.type === "input_audio_buffer.speech_started") {
+                    console.log("User Speech Started - Activity detected");
+                    clearSilenceTimer();
                 } else {
                     console.log("OpenAI Event:", msg.type);
                 }
