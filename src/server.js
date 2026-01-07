@@ -130,7 +130,7 @@ wss.on("connection", (twilioWs) => {
         "\n\n# VOICE SPECIFIC RULES\n" +
         "You are on the phone. " +
         "Keep responses extremely brief (1-2 sentences). " +
-        "Speak LOUDLY and CLEARLY. Use a warm, professional tone." +
+        "Speak clearly and professionally. " +
         "Use 'g711_ulaw' audio format.";
 
     // Connect to OpenAI Realtime API
@@ -174,7 +174,7 @@ wss.on("connection", (twilioWs) => {
             type: "response.create",
             response: {
                 modalities: ["text", "audio"],
-                instructions: "Say exactly: 'Hi we're Mezzo. We're a design-build studio specializing in ADUs and small habitats. We're known for our cross disciplinary solutions using wood, steel and glass, with a tech forward approach. We care about performance, healthy materials, and human centered design. We can get started with your project right now if you'd like. Let's start with your name, and your zipcode'",
+                instructions: "Please say this exact introduction: 'Hi we're Mezzo. We're a design-build studio specializing in ADUs and small habitats. We're known for our cross disciplinary solutions using wood, steel and glass, with a tech forward approach. We care about performance, healthy materials, and human centered design. We can get started with your project right now if you'd like. Let's start with your name, and your zipcode'",
             },
         };
         openaiWs.send(JSON.stringify(initialGreeting));
