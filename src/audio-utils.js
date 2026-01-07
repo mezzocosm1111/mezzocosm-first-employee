@@ -91,16 +91,29 @@ export function ulawToPcm16(ulawBuffer) {
  */
 export function pcm16ToUlaw(pcmBuffer, inputRate = 24000) {
     // 8000 Hz target
-    const ratio = inputRate / 8000;
+    const targetRate = 8000;
+    const ratio = inputRate / targetRate; // e.g. 3 for 24k -> 8k
     const inputSamples = pcmBuffer.length / 2;
     const outputSamples = Math.floor(inputSamples / ratio);
     const ulawBuffer = Buffer.alloc(outputSamples);
 
     for (let i = 0; i < outputSamples; i++) {
-        const inputIndex = Math.floor(i * ratio);
-        // Read 16-bit LE
-        const pcmVal = pcmBuffer.readInt16LE(inputIndex * 2);
-        ulawBuffer[i] = linearToUlaw(pcmVal);
+        // Averaging (Boxcar filter) to reduce aliasing
+        let sum = 0;
+        let count = 0;
+
+        const start = Math.floor(i * ratio);
+        const end = Math.floor((i + 1) * ratio);
+
+        // Ensure we don't go out of bounds
+        for (let j = start; j < end && j < inputSamples; j++) {
+            const pcmVal = pcmBuffer.readInt16LE(j * 2);
+            sum += pcmVal;
+            count++;
+        }
+
+        const avg = count > 0 ? Math.round(sum / count) : 0;
+        ulawBuffer[i] = linearToUlaw(avg);
     }
 
     return ulawBuffer;
