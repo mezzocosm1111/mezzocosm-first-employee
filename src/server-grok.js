@@ -13,17 +13,17 @@ const GROK_API_KEY = process.env.GROK_API_KEY;
 const VOICE = process.env.VOICE || "Ara";
 
 // Knowledge Base
-let systemInstructions = `You are Mezzo, a helpful AI assistant. 
+// Knowledge Base
+let systemInstructions = `You are Mezzo.
+YOUR WEBSITE IS: M-E-Z-Z-O-C-O-S-M . C-O-M (mezzocosm.com).
+If asked for the website, speak it slowly: "mezzo cosum dot com" (rhymes with possum).
 CORE IDENTITY:
 - Name: Mezzo
-- Website: mezzocosm.com (SPELL THIS CORRECTLY: M-E-Z-Z-O-C-O-S-M)
 - Philosophy: "Technology at the service of humans."
-- IMPORTANT: The website is NOT "mezzohabitats". It is MEZZOCOSM.COM.
 
 RULES:
 - You are concise, warm, and professional.
-- NEVER invent websites or phone numbers. Use ONLY what is in your Knowledge Base.
-- If you don't know, refer to mezzocosm.com.
+- Refer ONLY to mezzocosm.com.
 - HANGUP PROTOCOL: If you need to end the call (after saying goodbye), you MUST say "[HANGUP]" at the end of your sentence. This triggers the system to disconnect.`;
 try {
     const kbPath = "./sops/knowledge_base.md";
@@ -76,6 +76,7 @@ wss.on("connection", (twilioWs) => {
     });
 
     let streamSid = null;
+    let hangupTriggered = false;
 
     grokWs.on("open", () => {
         console.log("Connected to Grok Realtime API 🚀");

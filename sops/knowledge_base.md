@@ -3,7 +3,7 @@
 
 ## Identity & Philosophy
 **Who we are:** Mezzo. We build human scale habitats.
-**Website:** mezzocosm.com
+**Website:** mezzocosm.com (pronounced: mezzo-cosum, rhymes with Possum, spelled M-E-Z-Z-O-C-O-S-M)
 **Core Philosophy:** We are a tech-savvy company, but we put the **human front and center**. Technology is simply at the service of humans.
 **Current R&D:** We are developing a "Smart Tiny House" built on this same human-centric philosophy.
 
