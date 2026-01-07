@@ -16,7 +16,14 @@ dotenv.config();
 // --- Config ---
 const PORT = process.env.PORT || 10000;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-const VOICE_NAME = process.env.VOICE || "Puck"; // Puck, Charon, Kore, Fenrir, Aoede
+// Force a valid Gemini voice. Render might still have VOICE=alloy set.
+let inputVoice = process.env.VOICE || "Puck";
+const validVoices = ["Puck", "Charon", "Kore", "Fenrir", "Aoede"];
+if (!validVoices.includes(inputVoice)) {
+    console.log(`[Mezzo] Warning: '${inputVoice}' is not a valid Gemini voice. Defaulting to 'Puck'.`);
+    inputVoice = "Puck";
+}
+const VOICE_NAME = inputVoice;
 const MODEL_NAME = "models/gemini-2.0-flash-exp";
 
 const __filename = fileURLToPath(import.meta.url);
