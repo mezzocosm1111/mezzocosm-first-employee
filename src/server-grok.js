@@ -17,20 +17,22 @@ let systemInstructions = `You are Mezzo, a helpful AI assistant.
 CORE IDENTITY:
 - Name: Mezzo
 - Website: mezzocosm.com (SPELL THIS CORRECTLY: M-E-Z-Z-O-C-O-S-M)
-- Philosophy: Human-scale habitats.
+- Philosophy: "Technology at the service of humans."
+- IMPORTANT: The website is NOT "mezzohabitats". It is MEZZOCOSM.COM.
 
 RULES:
 - You are concise, warm, and professional.
 - NEVER invent websites or phone numbers. Use ONLY what is in your Knowledge Base.
-- If you don't know, refer to mezzocosm.com.`;
+- If you don't know, refer to mezzocosm.com.
+- HANGUP PROTOCOL: If you need to end the call (after saying goodbye), you MUST say "[HANGUP]" at the end of your sentence. This triggers the system to disconnect.`;
 try {
     const kbPath = "./sops/knowledge_base.md";
     if (fs.existsSync(kbPath)) {
         const kbContent = fs.readFileSync(kbPath, "utf-8");
-        systemInstructions += `\n\nGlobal Knowledge Base:\n${kbContent}`;
+        systemInstructions += "\n\n" + kbContent;
     }
-} catch (e) {
-    console.error("Warning: Could not load knowledge base.", e);
+} catch (error) {
+    console.error("Error loading Knowledge Base:", error);
 }
 
 if (!GROK_API_KEY) {
@@ -138,9 +140,9 @@ wss.on("connection", (twilioWs) => {
     grokWs.on("message", (data) => {
         try {
             const msg = JSON.parse(data);
+
             if (msg.type === "response.audio.delta" && msg.delta) {
                 // PASSTHROUGH (Native)
-                // Assuming Config worked, this is already 8k u-law!
                 if (twilioWs.readyState === WebSocket.OPEN) {
                     twilioWs.send(JSON.stringify({
                         event: "media",
@@ -148,7 +150,27 @@ wss.on("connection", (twilioWs) => {
                         media: { payload: msg.delta }
                     }));
                 }
-            } else if (msg.type === "error") {
+            }
+
+            // Detect Transcript for Hangup Trigger
+            if (msg.type === "response.audio.transcript.done") {
+                const transcript = msg.transcript || "";
+                if (transcript.includes("[HANGUP]")) {
+                    console.log("Hangup Trigger Detected from AI.");
+                    hangupTriggered = true;
+                }
+            }
+
+            // Execute Hangup after response is done
+            if (msg.type === "response.done" && hangupTriggered) {
+                console.log("Response Done. Executing Hangup.");
+                // Give a small buffer for the audio to play out on the phone
+                setTimeout(() => {
+                    if (twilioWs.readyState === WebSocket.OPEN) twilioWs.close();
+                }, 2000);
+            }
+
+            else if (msg.type === "error") {
                 console.error("Grok Error:", JSON.stringify(msg, null, 2));
             }
         } catch (e) { console.error("Grok Message Error:", e); }
