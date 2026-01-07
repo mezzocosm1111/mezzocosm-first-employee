@@ -3,6 +3,7 @@ import http from "http";
 import WebSocket, { WebSocketServer } from "ws";
 import dotenv from "dotenv";
 import fs from "fs";
+import { ulawToPcm16, pcm16ToUlaw } from "./audio-utils.js";
 
 dotenv.config();
 
@@ -11,7 +12,7 @@ const PORT = process.env.PORT || 10000;
 const GROK_API_KEY = process.env.GROK_API_KEY;
 // Start with NO model param to let it default, or try 'grok-beta' if this fails
 // const REALTIME_MODEL = "grok-beta"; 
-const VOICE = process.env.VOICE || "alloy"; // Try default first, logic ensures compatibility
+const VOICE = process.env.VOICE || "Ara"; // Updated to Ara as requested
 
 // Knowledge Base
 let systemInstructions = `You are Mezzo, a helpful AI assistant. You are concise, warm, and professional.`;
@@ -74,19 +75,19 @@ wss.on("connection", (twilioWs) => {
         console.log("Connected to Grok Realtime API 🚀");
 
         // 1. Configure Session
-        // Sending 'g711_ulaw' assuming compatibility.
+        // Sending 'pcm16' because Grok likely doesn't support 'g711_ulaw' natively yet.
         const sessionConfig = {
             type: "session.update",
             session: {
                 modalities: ["text", "audio"],
-                voice: VOICE, // "alloy" is standard OpenAI, let's see if Grok maps it
+                voice: VOICE,
                 instructions: systemInstructions,
-                input_audio_format: "g711_ulaw",
-                output_audio_format: "g711_ulaw",
+                input_audio_format: "pcm16",
+                output_audio_format: "pcm16",
                 turn_detection: { type: "server_vad" }
             }
         };
-        console.log("Sending Session Config...");
+        console.log("Sending Session Config (PCM16)...");
         grokWs.send(JSON.stringify(sessionConfig));
 
         // 2. Initial Trigger
@@ -109,11 +110,13 @@ wss.on("connection", (twilioWs) => {
                 streamSid = data.start.streamSid;
                 console.log("Twilio Stream Started:", streamSid);
             } else if (data.event === "media" && grokWs.readyState === WebSocket.OPEN) {
-                // Determine if we need to transcode? 
-                // OpenAI accepted base64 ulaw payload. Assuming Grok does too.
+                // Transcode Twilio (u-law) -> Grok (PCM16)
+                const ulawBuffer = Buffer.from(data.media.payload, 'base64');
+                const pcmBuffer = ulawToPcm16(ulawBuffer);
+
                 const audioAppend = {
                     type: "input_audio_buffer.append",
-                    audio: data.media.payload
+                    audio: pcmBuffer.toString('base64')
                 };
                 grokWs.send(JSON.stringify(audioAppend));
             } else if (data.event === "stop") {
@@ -128,19 +131,24 @@ wss.on("connection", (twilioWs) => {
         try {
             const msg = JSON.parse(data);
             if (msg.type === "response.audio.delta" && msg.delta) {
-                // Stream audio back to Twilio
+                // Transcode Grok (PCM16) -> Twilio (u-law)
+                const pcmBuffer = Buffer.from(msg.delta, 'base64');
+                // Assuming Grok sends 24000Hz like Gemini/OpenAI standard, or 16000? 
+                // Let's assume 24000 mostly, but we can verify.
+                const ulawBuffer = pcm16ToUlaw(pcmBuffer, 24000);
+
                 if (twilioWs.readyState === WebSocket.OPEN) {
                     twilioWs.send(JSON.stringify({
                         event: "media",
                         streamSid,
-                        media: { payload: msg.delta }
+                        media: { payload: ulawBuffer.toString('base64') }
                     }));
                 }
             } else if (msg.type === "error") {
                 console.error("Grok Error:", JSON.stringify(msg, null, 2));
             } else {
                 // Log other events sparingly
-                console.log("Grok Event:", msg.type);
+                // console.log("Grok Event:", msg.type);
             }
         } catch (e) { console.error("Grok Message Error:", e); }
     });
