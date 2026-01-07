@@ -66,38 +66,22 @@ function linearToUlaw(pcm_val) {
  */
 export function ulawToPcm16(ulawBuffer) {
     const samples = ulawBuffer.length;
-    // 1 input byte = 2 output samples (16kHz) * 2 bytes/sample = 4x size
+    // 1 input byte = 2 output samples (doubling) * 2 bytes/sample = 4x size
     const pcmBuffer = Buffer.alloc(samples * 4);
 
     for (let i = 0; i < samples; i++) {
         const ulawByte = ulawBuffer[i];
         const pcmVal = ulawToLinear(ulawByte);
 
-        // Next sample for interpolation
-        let nextPcmVal = pcmVal;
-        if (i < samples - 1) {
-            nextPcmVal = ulawToLinear(ulawBuffer[i + 1]);
-        }
-
-        // 1. Current Sample
+        // Write twice (upsampling by repetition/doubling)
+        // Offset i * 4
         pcmBuffer.writeInt16LE(pcmVal, i * 4);
-
-        // 2. Interpolated Sample (Average of current + next)
-        // This smooths the "staircase" of 8k -> 16k upsampling
-        const interpolated = Math.round((pcmVal + nextPcmVal) / 2);
-        pcmBuffer.writeInt16LE(interpolated, i * 4 + 2);
+        pcmBuffer.writeInt16LE(pcmVal, i * 4 + 2);
     }
 
     return pcmBuffer;
 }
 
-/**
- * Converts a Buffer of PCM16LE (16kHz or 24kHz) to a Buffer of u-law (8kHz).
- * Uses simple downsampling (decimation).
- * 
- * @param {Buffer} pcmBuffer Input PCM 16-bit Little Endian
- * @param {number} inputRate Source Sample Rate (default 24000 for Gemini output sometimes, or 16000)
- */
 export function pcm16ToUlaw(pcmBuffer, inputRate = 24000) {
     // 8000 Hz target
     const targetRate = 8000;
@@ -107,22 +91,10 @@ export function pcm16ToUlaw(pcmBuffer, inputRate = 24000) {
     const ulawBuffer = Buffer.alloc(outputSamples);
 
     for (let i = 0; i < outputSamples; i++) {
-        // Averaging (Boxcar filter) to reduce aliasing
-        let sum = 0;
-        let count = 0;
-
-        const start = Math.floor(i * ratio);
-        const end = Math.floor((i + 1) * ratio);
-
-        // Ensure we don't go out of bounds
-        for (let j = start; j < end && j < inputSamples; j++) {
-            const pcmVal = pcmBuffer.readInt16LE(j * 2);
-            sum += pcmVal;
-            count++;
-        }
-
-        const avg = count > 0 ? Math.round(sum / count) : 0;
-        ulawBuffer[i] = linearToUlaw(avg);
+        const inputIndex = Math.floor(i * ratio);
+        // Read 16-bit LE
+        const pcmVal = pcmBuffer.readInt16LE(inputIndex * 2);
+        ulawBuffer[i] = linearToUlaw(pcmVal);
     }
 
     return ulawBuffer;
