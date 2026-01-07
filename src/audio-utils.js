@@ -66,17 +66,26 @@ function linearToUlaw(pcm_val) {
  */
 export function ulawToPcm16(ulawBuffer) {
     const samples = ulawBuffer.length;
-    // 1 input byte = 2 output samples (doubling) * 2 bytes/sample = 4x size
+    // 1 input byte = 2 output samples (16kHz) * 2 bytes/sample = 4x size
     const pcmBuffer = Buffer.alloc(samples * 4);
 
     for (let i = 0; i < samples; i++) {
         const ulawByte = ulawBuffer[i];
         const pcmVal = ulawToLinear(ulawByte);
 
-        // Write twice (upsampling by repetition/doubling)
-        // Offset i * 4
+        // Next sample for interpolation
+        let nextPcmVal = pcmVal;
+        if (i < samples - 1) {
+            nextPcmVal = ulawToLinear(ulawBuffer[i + 1]);
+        }
+
+        // 1. Current Sample
         pcmBuffer.writeInt16LE(pcmVal, i * 4);
-        pcmBuffer.writeInt16LE(pcmVal, i * 4 + 2);
+
+        // 2. Interpolated Sample (Average of current + next)
+        // This smooths the "staircase" of 8k -> 16k upsampling
+        const interpolated = Math.round((pcmVal + nextPcmVal) / 2);
+        pcmBuffer.writeInt16LE(interpolated, i * 4 + 2);
     }
 
     return pcmBuffer;
