@@ -10,7 +10,7 @@ dotenv.config();
 // --- Configuration ---
 const PORT = process.env.PORT || 10000;
 const GROK_API_KEY = process.env.GROK_API_KEY;
-const VOICE = process.env.VOICE || "Ara";
+const VOICE = process.env.VOICE || "Sal";
 
 // Knowledge Base
 // Knowledge Base
@@ -173,11 +173,22 @@ wss.on("connection", (twilioWs) => {
     grokWs.on("error", (e) => console.error("Grok WebSocket Error:", e));
     grokWs.on("close", (code, reason) => {
         console.log(`Grok Connection Closed: ${code} ${reason}`);
-        twilioWs.close();
+        if (twilioWs.readyState === WebSocket.OPEN) twilioWs.close();
     });
 
-    twilioWs.on("close", () => grokWs.close());
+    twilioWs.on("close", () => {
+        if (grokWs.readyState === WebSocket.OPEN) grokWs.close();
+    });
     twilioWs.on("error", (e) => console.error("Twilio WebSocket Error:", e));
+});
+
+// process-level error handling
+process.on("uncaughtException", (err) => {
+    console.error("Uncaught Exception:", err);
+    // Keep running if possible, or exit gracefully
+});
+process.on("unhandledRejection", (reason, promise) => {
+    console.error("Unhandled Rejection at:", promise, "reason:", reason);
 });
 
 server.listen(PORT, () => console.log(`Mezzo (Grok Native) running on port ${PORT}`));
