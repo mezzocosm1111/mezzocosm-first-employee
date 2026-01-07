@@ -64,6 +64,15 @@ wss.on("connection", (twilioWs) => {
         return;
     }
 
+    geminiWs.on("error", (err) => {
+        console.error("Gemini WebSocket Error:", err);
+    });
+
+    geminiWs.on("close", (code, reason) => {
+        console.log(`[Mezzo] Gemini Disconnected: ${code} - ${reason}`);
+        if (twilioWs.readyState === WebSocket.OPEN) twilioWs.close();
+    });
+
     geminiWs.on("open", () => {
         console.log("[Mezzo] Connected to Gemini");
 
@@ -93,21 +102,26 @@ wss.on("connection", (twilioWs) => {
                 }
             }
         };
+
+        console.log("Sending Setup:", JSON.stringify(setupMsg).substring(0, 200) + "..."); // Log brief
         geminiWs.send(JSON.stringify(setupMsg));
 
-        // 2. Send Initial Greeting (Triggered via text insertion or just waiting)
-        // Gemini doesn't have a "Response Create" equivalent exactly like OpenAI.
-        // We can send a hidden text prompt to trigger the greeting:
-        const greetingMsg = {
-            client_content: {
-                turns: [{
-                    role: "user",
-                    parts: [{ text: "Introduce yourself please." }]
-                }],
-                turn_complete: true
+        // 2. Send Initial Greeting (Delayed to ensure Setup is processed)
+        setTimeout(() => {
+            const greetingMsg = {
+                client_content: {
+                    turns: [{
+                        role: "user",
+                        parts: [{ text: "Introduce yourself please." }]
+                    }],
+                    turn_complete: true
+                }
+            };
+            console.log("Sending Greeting Trigger");
+            if (geminiWs.readyState === WebSocket.OPEN) {
+                geminiWs.send(JSON.stringify(greetingMsg));
             }
-        };
-        geminiWs.send(JSON.stringify(greetingMsg));
+        }, 500);
     });
 
     geminiWs.on("message", (data) => {
@@ -143,11 +157,6 @@ wss.on("connection", (twilioWs) => {
         } catch (e) {
             console.error("Gemini Message Error:", e);
         }
-    });
-
-    geminiWs.on("close", () => {
-        console.log("[Mezzo] Gemini Disconnected");
-        if (twilioWs.readyState === WebSocket.OPEN) twilioWs.close();
     });
 
     // Twilio -> Gemini
