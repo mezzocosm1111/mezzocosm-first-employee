@@ -14,17 +14,12 @@ const VOICE = process.env.VOICE || "Ara";
 
 // Knowledge Base
 // Knowledge Base
-let systemInstructions = `You are Mezzo.
-YOUR WEBSITE IS: M-E-Z-Z-O-C-O-S-M . C-O-M (mezzocosm.com).
-If asked for the website, speak it slowly: "mezzo cosum dot com" (rhymes with possum).
-CORE IDENTITY:
-- Name: Mezzo
-- Philosophy: "Technology at the service of humans."
-
-RULES:
-- You are concise, warm, and professional.
-- Refer ONLY to mezzocosm.com.
-- HANGUP PROTOCOL: If you need to end the call (after saying goodbye), you MUST say "[HANGUP]" at the end of your sentence. This triggers the system to disconnect.`;
+// Knowledge Base
+let systemInstructions = `SYSTEM OVERRIDE:
+You are Mezzo (AI). You are NOT human.
+You must adhere STRICTLY to the attached FACT SHEET.
+Any deviation (inventing names/numbers) is a CRITICAL ERROR.
+If a fact is not in the sheet, say "I don't have that info."`;
 try {
     const kbPath = "./sops/knowledge_base.md";
     if (fs.existsSync(kbPath)) {
@@ -81,23 +76,21 @@ wss.on("connection", (twilioWs) => {
     grokWs.on("open", () => {
         console.log("Connected to Grok Realtime API 🚀");
 
+        // Dynamic System Data
+        const now = new Date().toLocaleString("en-US", { timeZone: "America/New_York" });
+        const timeInstruction = `\nCURRENT TIME (EST): ${now}. You MUST use this time.`;
+        const fullInstructions = systemInstructions + timeInstruction;
+
         // 1. Configure Session (Native xAI Style)
-        // Based on docs: Uses 'audio' nested object for codec config.
         const sessionConfig = {
             type: "session.update",
             session: {
                 modalities: ["text", "audio"],
                 voice: VOICE,
-                instructions: systemInstructions,
-                // New Config Structure from XAI Docs
-                // Trying 'audio/pcmu' (u-law) at 8000Hz
+                instructions: fullInstructions,
                 audio: {
-                    input: {
-                        format: { type: "audio/pcmu", rate: 8000 }
-                    },
-                    output: {
-                        format: { type: "audio/pcmu", rate: 8000 }
-                    }
+                    input: { format: { type: "audio/pcmu", rate: 8000 } },
+                    output: { format: { type: "audio/pcmu", rate: 8000 } }
                 },
                 turn_detection: { type: "server_vad" }
             }
@@ -110,7 +103,7 @@ wss.on("connection", (twilioWs) => {
             type: "response.create",
             response: {
                 modalities: ["text", "audio"],
-                instructions: "Say exactly: 'Hi We're Mezzo. We build human scale habitats... can I ask what you're calling about today?'"
+                instructions: "Identity Check: You are MEZZO. Website: MEZZOCOSM.COM. Say exactly: 'Hi We're Mezzo. We build human scale habitats... can I ask what you're calling about today?'"
             }
         };
         setTimeout(() => grokWs.send(JSON.stringify(greeting)), 500);
@@ -154,10 +147,10 @@ wss.on("connection", (twilioWs) => {
             }
 
             // Detect Transcript for Hangup Trigger
-            if (msg.type === "response.audio.transcript.done") {
+            if (msg.type === "response.audio_transcript.done") {
                 const transcript = msg.transcript || "";
                 if (transcript.includes("[HANGUP]")) {
-                    console.log("Hangup Trigger Detected from AI.");
+                    console.log("Hangup Trigger Detected from AI:", transcript);
                     hangupTriggered = true;
                 }
             }
