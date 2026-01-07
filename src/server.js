@@ -175,7 +175,7 @@ wss.on("connection", (twilioWs) => {
             type: "response.create",
             response: {
                 modalities: ["text", "audio"],
-                instructions: "Please say this exact introduction: 'Hi we're Mezzo. We're a design-build studio specializing in ADUs and small habitats. We're known for our cross disciplinary solutions using wood, steel and glass, with a tech forward approach. We care about performance, healthy materials, and human centered design. We can get started with your project right now if you'd like. Let's start with your name, and your zipcode'",
+                instructions: "Say exactly: 'Hi this is Mezzo, a design/build studio specialized in small habitats. Are you calling about an ADU or something else?'",
             },
         };
         openaiWs.send(JSON.stringify(initialGreeting));
