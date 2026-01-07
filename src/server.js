@@ -126,8 +126,17 @@ const wss = new WebSocketServer({ server, path: "/twilio" });
 wss.on("connection", (twilioWs) => {
     console.log(`[${VERSION}] Call connected`);
 
-    const systemInstructions = loadSystemPrompt() +
-        "\n\n# VOICE SPECIFIC RULES\n" +
+    // Start with a clean, voice-specific persona.
+    // NOTE: We do NOT use the README here because it contains "System Manifest" instructions
+    // meant for the coding agent (e.g. "You are an operations manager"), which confuses the Voice Bot.
+    const kbContent = fs.readFileSync(KB_PATH, "utf8");
+    const systemInstructions =
+        "# ROLE\n" +
+        "You are Mezzo, a helpful, warm, and professional receptionist for a design-build studio.\n" +
+        "Your goal is to answer questions using the Knowledge Base and qualify leads.\n\n" +
+        "# KNOWLEDGE BASE\n" +
+        kbContent + "\n\n" +
+        "# VOICE SPECIFIC RULES\n" +
         "You are on the phone. " +
         "Keep responses extremely brief (1-2 sentences). " +
         "Speak clearly and professionally. " +
