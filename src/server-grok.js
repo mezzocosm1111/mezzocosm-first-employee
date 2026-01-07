@@ -13,7 +13,16 @@ const GROK_API_KEY = process.env.GROK_API_KEY;
 const VOICE = process.env.VOICE || "Ara";
 
 // Knowledge Base
-let systemInstructions = `You are Mezzo, a helpful AI assistant. You are concise, warm, and professional.`;
+let systemInstructions = `You are Mezzo, a helpful AI assistant. 
+CORE IDENTITY:
+- Name: Mezzo
+- Website: mezzocosm.com (SPELL THIS CORRECTLY: M-E-Z-Z-O-C-O-S-M)
+- Philosophy: Human-scale habitats.
+
+RULES:
+- You are concise, warm, and professional.
+- NEVER invent websites or phone numbers. Use ONLY what is in your Knowledge Base.
+- If you don't know, refer to mezzocosm.com.`;
 try {
     const kbPath = "./sops/knowledge_base.md";
     if (fs.existsSync(kbPath)) {
