@@ -1,5 +1,6 @@
 
-import { mulaw } from 'alawmulaw';
+import pkg from 'alawmulaw';
+const { mulaw } = pkg;
 
 /**
  * Robust Transcoding using alawmulaw (Codec) + Linear Interpolation (Resampling).
