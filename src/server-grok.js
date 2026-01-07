@@ -98,7 +98,7 @@ wss.on("connection", (twilioWs) => {
             type: "response.create",
             response: {
                 modalities: ["text", "audio"],
-                instructions: "Greet the user warmly as Mezzo."
+                instructions: "Say exactly: 'Hi We're Mezzo. We build human scale habitats... can I ask what you're calling about today?'"
             }
         };
         setTimeout(() => grokWs.send(JSON.stringify(greeting)), 500);
