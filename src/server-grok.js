@@ -103,10 +103,19 @@ wss.on("connection", (twilioWs) => {
             type: "response.create",
             response: {
                 modalities: ["text", "audio"],
-                instructions: "Identity Check: You are MEZZO. Website: MEZZOCOSM.COM. Say exactly: 'Hi We're Mezzo. We build human scale habitats... can I ask what you're calling about today?'"
+                instructions: "Identity Check: You are MEZZO. Website: MEZZOCOSM.COM. Say exactly: 'Hi We're Mezzo (Pronounced Mezzo-Cosum). We build human scale habitats... can I ask what you're calling about today?'"
             }
         };
         setTimeout(() => grokWs.send(JSON.stringify(greeting)), 500);
+
+        // Heartbeat (Keep-Alive)
+        const outputHeartbeat = setInterval(() => {
+            if (grokWs.readyState === WebSocket.OPEN) {
+                grokWs.ping();
+            }
+        }, 30000);
+
+        grokWs.on("close", () => clearInterval(outputHeartbeat));
     });
 
     // Handle Twilio Messages
@@ -151,19 +160,17 @@ wss.on("connection", (twilioWs) => {
                 const transcript = msg.transcript || "";
                 if (transcript.includes("[HANGUP]")) {
                     console.log("Hangup Trigger Detected from AI:", transcript);
-                    hangupTriggered = true;
+                    if (!hangupTriggered) {
+                        hangupTriggered = true;
+                        console.log("Initiating Hangup Sequence (2s delay)...");
+                        setTimeout(() => {
+                            if (twilioWs.readyState === WebSocket.OPEN) twilioWs.close();
+                        }, 2000);
+                    }
                 }
             }
 
-            // Execute Hangup after response is done
-            if (msg.type === "response.done" && hangupTriggered) {
-                console.log("Response Done. Executing Hangup.");
-                // Give a small buffer for the audio to play out on the phone
-                setTimeout(() => {
-                    if (twilioWs.readyState === WebSocket.OPEN) twilioWs.close();
-                }, 2000);
-            }
-
+            // Log Error
             else if (msg.type === "error") {
                 console.error("Grok Error:", JSON.stringify(msg, null, 2));
             }
@@ -190,5 +197,17 @@ process.on("uncaughtException", (err) => {
 process.on("unhandledRejection", (reason, promise) => {
     console.error("Unhandled Rejection at:", promise, "reason:", reason);
 });
+
+// Graceful Shutdown
+process.on("SIGTERM", () => {
+    console.log("Received SIGTERM. Shutting down gracefully...");
+    server.close(() => {
+        console.log("Server closed.");
+        process.exit(0);
+    });
+});
+
+server.keepAliveTimeout = 120 * 1000;
+server.headersTimeout = 120 * 1000;
 
 server.listen(PORT, () => console.log(`Mezzo (Grok Native) running on port ${PORT}`));
