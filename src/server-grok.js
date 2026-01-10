@@ -103,7 +103,7 @@ wss.on("connection", (twilioWs) => {
             type: "response.create",
             response: {
                 modalities: ["text", "audio"],
-                instructions: "Identity Check: You are MEZZO. Website: MEZZOCOSM.COM. Say exactly: 'Hi We're Mezzo (Pronounced Mezzo-Cosum). We build human scale habitats... can I ask what you're calling about today?'"
+                instructions: "Identity Check: You are MEZZO. (Short for MEZZOCOSM). Say exactly: 'Hi We're Mezzo. We build human scale habitats... can I ask what you're calling about today?'"
             }
         };
         setTimeout(() => grokWs.send(JSON.stringify(greeting)), 500);
@@ -158,8 +158,11 @@ wss.on("connection", (twilioWs) => {
             // Detect Transcript for Hangup Trigger
             if (msg.type === "response.audio_transcript.done") {
                 const transcript = msg.transcript || "";
-                if (transcript.includes("[HANGUP]")) {
-                    console.log("Hangup Trigger Detected from AI:", transcript);
+                console.log("AI Transcript:", transcript); // DEBUG LOG
+
+                // ROBUST REGEX MATCH
+                if (/\[?hang\s*up\]?/i.test(transcript)) {
+                    console.log("Hangup Trigger Detected via Regex:", transcript);
                     if (!hangupTriggered) {
                         hangupTriggered = true;
                         console.log("Initiating Hangup Sequence (2s delay)...");
