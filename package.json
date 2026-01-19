@@ -16,7 +16,8 @@
         "express": "^4.19.2",
         "openai": "^4.52.0",
         "ws": "^8.18.0",
-        "alawmulaw": "^6.0.0"
+        "alawmulaw": "^6.0.0",
+        "twilio": "^5.0.0"
     },
     "engines": {
         "node": ">=18.0.0"

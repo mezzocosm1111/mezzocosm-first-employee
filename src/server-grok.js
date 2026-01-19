@@ -4,6 +4,7 @@ import http from "http";
 import WebSocket, { WebSocketServer } from "ws";
 import dotenv from "dotenv";
 import fs from "fs";
+import Twilio from "twilio";
 
 dotenv.config();
 
@@ -30,10 +31,15 @@ try {
     console.error("Error loading Knowledge Base:", error);
 }
 
+
 if (!GROK_API_KEY) {
     console.error("CRITICAL: Missing GROK_API_KEY.");
     process.exit(1);
 }
+
+// Twilio Client
+const twilioClient = new Twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+
 
 // --- Server Setup ---
 const app = express();
@@ -71,6 +77,7 @@ wss.on("connection", (twilioWs) => {
     });
 
     let streamSid = null;
+    let callSid = null;
     let hangupTriggered = false;
 
     grokWs.on("open", () => {
@@ -124,7 +131,8 @@ wss.on("connection", (twilioWs) => {
             const data = JSON.parse(msg);
             if (data.event === "start") {
                 streamSid = data.start.streamSid;
-                console.log("Twilio Stream Started:", streamSid);
+                callSid = data.start.callSid;
+                console.log(`Twilio Stream Started: ${streamSid} (Call: ${callSid})`);
             } else if (data.event === "media" && grokWs.readyState === WebSocket.OPEN) {
                 // PASSTHROUGH (Native)
                 const audioAppend = {
@@ -165,10 +173,19 @@ wss.on("connection", (twilioWs) => {
                     console.log("Hangup Trigger Detected via Regex:", transcript);
                     if (!hangupTriggered) {
                         hangupTriggered = true;
-                        console.log("Initiating Hangup Sequence (2s delay)...");
-                        setTimeout(() => {
-                            if (twilioWs.readyState === WebSocket.OPEN) twilioWs.close();
-                        }, 2000);
+
+                        if (callSid) {
+                            console.log(`Initiating API Hangup for Call ${callSid}...`);
+                            twilioClient.calls(callSid)
+                                .update({ status: 'completed' })
+                                .then(call => console.log(`Call ${call.sid} terminated via API`))
+                                .catch(err => console.error("Twilio API Hangup Error:", err));
+                        } else {
+                            console.error("No CallSid found! Falling back to stream close.");
+                            setTimeout(() => {
+                                if (twilioWs.readyState === WebSocket.OPEN) twilioWs.close();
+                            }, 1000);
+                        }
                     }
                 }
             }
