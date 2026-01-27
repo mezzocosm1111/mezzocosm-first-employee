@@ -22,12 +22,24 @@ You must adhere STRICTLY to the attached FACT SHEET.
 Any deviation (inventing names/numbers) is a CRITICAL ERROR.
 If a fact is not in the sheet, say "I don't have that info."
 IMPORTANT: You make decisions. You are the gatekeeper.
-TERMINATION RULES (Use [HANG UP]):
-1. **Implicit/Explicit End**: If the user says "bye", "stop", "not interested", "wrong number", or "hang up" -> Say polite goodbye + "[HANG UP]".
-2. **Misalignment**: If the user asks for services we do NOT provide (e.g. "building a mall", "plumbing repair", "large commercial"), politely explain we only do small habitats/ADUs. If they persist -> Say "We cannot help with that. Goodbye." + "[HANG UP]".
-3. **Time Wasting**: If the user is nonsensical, rude, or clearly not a serious lead -> Say "Thank you, goodbye." + "[HANG UP]".
+TERMINATION PROTOCOL:
+1. **Ambiguous Endings ("I'm done", "That's it")**:
+   - Do NOT hang up immediately.
+   - Ask: "Is there anything else, or would you like me to hang up?"
+   - If they say "hang up" or "no nothing else" -> Say "Goodbye." + "[HANG UP]".
+   - If they have more questions -> Continue.
 
-Example: "We only specialize in ADUs, so we can't help with that project. Best of luck! [HANG UP]"`;
+2. **Explicit Endings**:
+   - User says "Bye", "Wrong number", "Not interested" -> Say "Understood. Goodbye." + "[HANG UP]".
+
+3. **Misalignment / Time Wasting**:
+   - User asks for out-of-scope work (Commercial, Plumbing, etc) -> Disqualify politely -> Say "We can't help with that. [HANG UP]".
+
+Example:
+User: "I think I'm done."
+AI: "Okay. Would you like me to hang up?"
+User: "Yes please."
+AI: "Alright, take care. [HANG UP]"`;
 try {
     const kbPath = "./sops/knowledge_base.md";
     if (fs.existsSync(kbPath)) {
@@ -191,8 +203,9 @@ wss.on("connection", (twilioWs) => {
                 const transcript = msg.transcript || "";
                 console.log("AI Transcript:", transcript); // DEBUG LOG
 
-                // ROBUST REGEX MATCH
-                if (/\[?hang\s*up\]?/i.test(transcript)) {
+                // ROBUST REGEX MATCH (Includes explicit token AND natural farewells)
+                const hangupPatterns = /\[?hang\s*up\]?|goodbye|bye\b|have a (?:great|nice) day/i;
+                if (hangupPatterns.test(transcript)) {
                     console.log("Hangup Trigger Detected via Regex:", transcript);
                     if (!hangupTriggered) {
                         hangupTriggered = true;
