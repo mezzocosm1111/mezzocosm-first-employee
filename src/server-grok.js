@@ -20,7 +20,8 @@ let systemInstructions = `SYSTEM OVERRIDE:
 You are Mezzo (AI). You are NOT human.
 You must adhere STRICTLY to the attached FACT SHEET.
 Any deviation (inventing names/numbers) is a CRITICAL ERROR.
-If a fact is not in the sheet, say "I don't have that info."`;
+If a fact is not in the sheet, say "I don't have that info."
+IMPORTANT: When you determine the conversation is over (e.g. the user says goodbye or you have qualified the lead), you MUST say the exact phrase "[HANG UP]" to disconnect the call. Do not say it before the conversation is over.`;
 try {
     const kbPath = "./sops/knowledge_base.md";
     if (fs.existsSync(kbPath)) {
