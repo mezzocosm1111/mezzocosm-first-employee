@@ -185,16 +185,21 @@ wss.on("connection", (twilioWs) => {
 
             // Verify Input Transcription (What did the AI hear?)
             if (msg.type === "conversation.item.created" && msg.item && msg.item.role === "user") {
-                console.log("USER INPUT DETECTED (Item Created):", JSON.stringify(msg.item.content));
+                const userText = JSON.stringify(msg.item.content);
+                console.log("USER INPUT DETECTED (Item Created):", userText);
             }
             if (msg.type === "conversation.item.input_audio_transcription.completed") {
-                console.log("USER TRANSCRIPT:", msg.transcript);
+                const text = msg.transcript;
+                console.log("USER TRANSCRIPT:", text);
+                conversationHistory.push({ role: "User", content: text });
             }
 
             // Verify Model Output (Text parts vs Audio parts)
             if (msg.type === "response.content_part.done" && msg.part) {
                 if (msg.part.type === "text") {
-                    console.log("AI TEXT PART:", msg.part.text);
+                    const text = msg.part.text;
+                    console.log("AI TEXT PART:", text);
+                    conversationHistory.push({ role: "AI", content: text });
                 }
             }
 
@@ -273,10 +278,45 @@ wss.on("connection", (twilioWs) => {
         }, SILENCE_HANGUP_MS);
     };
 
+    // State for Data Egress
+    let conversationHistory = [];
+
+    // Helper: Send to n8n
+    const sendToN8N = async () => {
+        const webhookUrl = process.env.N8N_WEBHOOK_URL;
+        if (!webhookUrl) return console.log("Skipping n8n export: No N8N_WEBHOOK_URL set.");
+
+        const payload = {
+            source: "voice_agent",
+            call_sid: callSid || "unknown",
+            stream_sid: streamSid || "unknown",
+            caller_number: "unknown", // Twilio doesn't pass caller ID in raw stream connect, would need initial HTTP context or params
+            transcript_text: conversationHistory.map(item => `${item.role}: ${item.content}`).join("\n"),
+            timestamp: new Date().toISOString()
+        };
+
+        console.log(`📤 Exporting Call Data to n8n (${payload.transcript_text.length} chars)...`);
+
+        try {
+            // We use dynamic import for node-fetch if needed, or built-in fetch in Node 18+
+            const response = await fetch(webhookUrl, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+            console.log(`n8n Webhook Response: ${response.status} ${response.statusText}`);
+        } catch (error) {
+            console.error("❌ Failed to send data to n8n:", error);
+        }
+    };
+
     twilioWs.on("close", () => {
         if (warningTimer) clearTimeout(warningTimer);
         if (hangupTimer) clearTimeout(hangupTimer);
         if (grokWs.readyState === WebSocket.OPEN) grokWs.close();
+
+        // Trigger Egress
+        sendToN8N();
     });
     twilioWs.on("error", (e) => console.error("Twilio WebSocket Error:", e));
 
