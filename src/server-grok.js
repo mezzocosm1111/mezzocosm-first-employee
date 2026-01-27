@@ -21,7 +21,13 @@ You are Mezzo (AI). You are NOT human.
 You must adhere STRICTLY to the attached FACT SHEET.
 Any deviation (inventing names/numbers) is a CRITICAL ERROR.
 If a fact is not in the sheet, say "I don't have that info."
-IMPORTANT: When you determine the conversation is over (e.g. the user says goodbye or you have qualified the lead), you MUST say the exact phrase "[HANG UP]" to disconnect the call. Do not say it before the conversation is over.`;
+IMPORTANT: You make decisions. You are the gatekeeper.
+TERMINATION RULES (Use [HANG UP]):
+1. **Implicit/Explicit End**: If the user says "bye", "stop", "not interested", "wrong number", or "hang up" -> Say polite goodbye + "[HANG UP]".
+2. **Misalignment**: If the user asks for services we do NOT provide (e.g. "building a mall", "plumbing repair", "large commercial"), politely explain we only do small habitats/ADUs. If they persist -> Say "We cannot help with that. Goodbye." + "[HANG UP]".
+3. **Time Wasting**: If the user is nonsensical, rude, or clearly not a serious lead -> Say "Thank you, goodbye." + "[HANG UP]".
+
+Example: "We only specialize in ADUs, so we can't help with that project. Best of luck! [HANG UP]"`;
 try {
     const kbPath = "./sops/knowledge_base.md";
     if (fs.existsSync(kbPath)) {
@@ -136,6 +142,7 @@ wss.on("connection", (twilioWs) => {
                 console.log(`Twilio Stream Started: ${streamSid} (Call: ${callSid})`);
             } else if (data.event === "media" && grokWs.readyState === WebSocket.OPEN) {
                 // PASSTHROUGH (Native)
+                resetSilenceTimer(); // User is speaking
                 const audioAppend = {
                     type: "input_audio_buffer.append",
                     audio: data.media.payload
@@ -161,6 +168,21 @@ wss.on("connection", (twilioWs) => {
                         streamSid,
                         media: { payload: msg.delta }
                     }));
+                }
+            }
+
+            // Verify Input Transcription (What did the AI hear?)
+            if (msg.type === "conversation.item.created" && msg.item && msg.item.role === "user") {
+                console.log("USER INPUT DETECTED (Item Created):", JSON.stringify(msg.item.content));
+            }
+            if (msg.type === "conversation.item.input_audio_transcription.completed") {
+                console.log("USER TRANSCRIPT:", msg.transcript);
+            }
+
+            // Verify Model Output (Text parts vs Audio parts)
+            if (msg.type === "response.content_part.done" && msg.part) {
+                if (msg.part.type === "text") {
+                    console.log("AI TEXT PART:", msg.part.text);
                 }
             }
 
@@ -204,10 +226,49 @@ wss.on("connection", (twilioWs) => {
         if (twilioWs.readyState === WebSocket.OPEN) twilioWs.close();
     });
 
+    // Silence Detection (Two-Stage)
+    const SILENCE_WARNING_MS = 15000; // 15 seconds to warn
+    const SILENCE_HANGUP_MS = 30000;  // 30 seconds total to hangup
+    let warningTimer = null;
+    let hangupTimer = null;
+
+    const resetSilenceTimer = () => {
+        if (warningTimer) clearTimeout(warningTimer);
+        if (hangupTimer) clearTimeout(hangupTimer);
+
+        // Stage 1: Warning
+        warningTimer = setTimeout(() => {
+            console.log("Silence Warning: Prompting AI check-in.");
+            const checkIn = {
+                type: "response.create",
+                response: {
+                    modalities: ["text", "audio"],
+                    instructions: "The user has been silent for a while. Ask gently: 'Are you still with me? If you need to go, just let me know.'"
+                }
+            };
+            if (grokWs.readyState === WebSocket.OPEN) grokWs.send(JSON.stringify(checkIn));
+        }, SILENCE_WARNING_MS);
+
+        // Stage 2: Hard Hangup
+        hangupTimer = setTimeout(() => {
+            console.log("Silence Timeout: Hanging up due to inactivity.");
+            if (twilioWs.readyState === WebSocket.OPEN) twilioWs.close();
+            if (grokWs.readyState === WebSocket.OPEN) grokWs.close();
+            if (callSid) {
+                twilioClient.calls(callSid).update({ status: 'completed' }).catch(console.error);
+            }
+        }, SILENCE_HANGUP_MS);
+    };
+
     twilioWs.on("close", () => {
+        if (warningTimer) clearTimeout(warningTimer);
+        if (hangupTimer) clearTimeout(hangupTimer);
         if (grokWs.readyState === WebSocket.OPEN) grokWs.close();
     });
     twilioWs.on("error", (e) => console.error("Twilio WebSocket Error:", e));
+
+    // Reset silence timer on initial connection
+    resetSilenceTimer();
 });
 
 // process-level error handling
