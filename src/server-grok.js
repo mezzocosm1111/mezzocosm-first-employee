@@ -71,13 +71,16 @@ const app = express();
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server, path: "/twilio" });
 
+app.use(express.urlencoded({ extended: true })); // Enable body parsing for Twilio POST
+
 app.get("/", (req, res) => res.send("Mezzo Grok Server Active"));
 app.get("/health", (req, res) => res.json({ status: "ok" }));
 
 // Twilio Stream Webhook
 app.post("/twilio-voice/inbound", (req, res) => {
     const host = req.headers["x-forwarded-host"] || req.headers.host;
-    const streamUrl = `wss://${host}/twilio`;
+    const callerNumber = encodeURIComponent(req.body.From || "unknown");
+    const streamUrl = `wss://${host}/twilio?caller=${callerNumber}`;
     res.set("Content-Type", "text/xml");
     res.send(`<?xml version="1.0" encoding="UTF-8"?>
 <Response>
@@ -88,8 +91,13 @@ app.post("/twilio-voice/inbound", (req, res) => {
 });
 
 // WebSocket Handling
-wss.on("connection", (twilioWs) => {
+wss.on("connection", (twilioWs, req) => {
     console.log("New Call Connected (Grok Native Mode)");
+
+    // Parse Caller ID from Query String
+    const urlParams = new URLSearchParams(req.url.split('?')[1]);
+    const callerId = urlParams.get('caller') || "unknown";
+    console.log(`📞 Caller ID: ${callerId}`);
 
     const grokUrl = "wss://api.x.ai/v1/realtime";
     console.log(`Connecting to Grok at ${grokUrl}`);
@@ -298,7 +306,7 @@ wss.on("connection", (twilioWs) => {
             source: "voice_agent",
             call_sid: callSid || "unknown",
             stream_sid: streamSid || "unknown",
-            caller_number: "unknown", // Twilio doesn't pass caller ID in raw stream connect, would need initial HTTP context or params
+            caller_number: callerId,
             transcript_text: conversationHistory.map(item => `${item.role}: ${item.content}`).join("\n"),
             timestamp: new Date().toISOString()
         };
