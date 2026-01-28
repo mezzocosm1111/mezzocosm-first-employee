@@ -107,7 +107,7 @@ wss.on("connection", (twilioWs, req) => {
 
     // Parse Caller ID from Query String
     const urlParams = new URLSearchParams(req.url.split('?')[1]);
-    const callerId = urlParams.get('caller') || "unknown";
+    let callerId = urlParams.get('caller') || "unknown";
     console.log(`📞 Caller ID: ${callerId}`);
 
     const grokUrl = "wss://api.x.ai/v1/realtime";
