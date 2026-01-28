@@ -78,16 +78,26 @@ app.get("/health", (req, res) => res.json({ status: "ok" }));
 
 // Twilio Stream Webhook
 app.post("/twilio-voice/inbound", (req, res) => {
-    const host = req.headers["x-forwarded-host"] || req.headers.host;
-    const callerNumber = encodeURIComponent(req.body.From || "unknown");
-    const streamUrl = `wss://${host}/twilio?caller=${callerNumber}`;
-    res.set("Content-Type", "text/xml");
-    res.send(`<?xml version="1.0" encoding="UTF-8"?>
+    try {
+        const host = req.headers["x-forwarded-host"] || req.headers.host;
+        // Safe access to body
+        const body = req.body || {};
+        const callerNumber = encodeURIComponent(body.From || "unknown");
+
+        console.log(`Incoming Call from: ${body.From || "unknown"}`);
+
+        const streamUrl = `wss://${host}/twilio?caller=${callerNumber}`;
+        res.set("Content-Type", "text/xml");
+        res.send(`<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Connect>
     <Stream url="${streamUrl}" />
   </Connect>
 </Response>`);
+    } catch (error) {
+        console.error("Error in /twilio-voice/inbound:", error);
+        res.status(500).send("Internal Server Error");
+    }
 });
 
 // WebSocket Handling
