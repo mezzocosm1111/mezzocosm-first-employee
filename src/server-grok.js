@@ -176,6 +176,13 @@ wss.on("connection", (twilioWs, req) => {
             if (data.event === "start") {
                 streamSid = data.start.streamSid;
                 callSid = data.start.callSid;
+
+                // Attempt to get Caller ID from Custom Parameters (passed by n8n TwiML)
+                if (data.start.customParameters && data.start.customParameters.from) {
+                    callerId = data.start.customParameters.from;
+                    console.log(`📞 Caller ID (via TwiML Params): ${callerId}`);
+                }
+
                 console.log(`Twilio Stream Started: ${streamSid} (Call: ${callSid})`);
             } else if (data.event === "media" && grokWs.readyState === WebSocket.OPEN) {
                 // PASSTHROUGH (Native)
