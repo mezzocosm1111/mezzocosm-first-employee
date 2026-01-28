@@ -178,8 +178,11 @@ wss.on("connection", (twilioWs, req) => {
                 callSid = data.start.callSid;
 
                 // Attempt to get Caller ID from Custom Parameters (passed by n8n TwiML)
-                if (data.start.customParameters && data.start.customParameters.from) {
-                    callerId = data.start.customParameters.from;
+                console.log("DEBUG: Full Twilio Start Event:", JSON.stringify(data.start, null, 2));
+
+                if (data.start.customParameters) {
+                    const p = data.start.customParameters;
+                    callerId = p.from || p.From || p.caller || p.Caller || callerId;
                     console.log(`📞 Caller ID (via TwiML Params): ${callerId}`);
                 }
 
