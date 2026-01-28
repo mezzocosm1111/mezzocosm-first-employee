@@ -208,8 +208,10 @@ wss.on("connection", (twilioWs) => {
                 const transcript = msg.transcript || "";
                 console.log("AI Transcript:", transcript); // DEBUG LOG
 
-                // ROBUST REGEX MATCH (Includes explicit token AND natural farewells)
-                const hangupPatterns = /\[?hang\s*up\]?|goodbye|bye\b|have a (?:great|nice) day/i;
+                // ROBUST REGEX MATCH 
+                // Fix: Removed loose "hang up" to prevent triggering on questions like "Would you like me to hang up?"
+                // Now matching: [HANG UP] OR closing salutations.
+                const hangupPatterns = /\[hang\s*up\]|goodbye|bye\b|have a (?:great|nice) day/i;
                 if (hangupPatterns.test(transcript)) {
                     console.log("Hangup Trigger Detected via Regex:", transcript);
                     if (!hangupTriggered) {
