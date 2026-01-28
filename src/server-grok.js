@@ -129,8 +129,9 @@ wss.on("connection", (twilioWs, req) => {
 
         // Dynamic System Data
         const now = new Date().toLocaleString("en-US", { timeZone: "America/New_York" });
+        const lastFour = callerId.slice(-4);
         const timeInstruction = `\nCURRENT TIME (EST): ${now}. You MUST use this time.`;
-        const phoneInstruction = `\nCALLER PHONE NUMBER: ${callerId}. You ALREADY have this number. Do NOT ask for it. Just confirm it ("Is the best number ${callerId}?") if needed.`;
+        const phoneInstruction = `\nCALLER PHONE NUMBER: ${callerId}. When confirming contact info, ask exactly: "Would you like us to call back on this number, ending in ${lastFour}, or another number?" Do NOT read the full number unless asked.`;
         const fullInstructions = systemInstructions + timeInstruction + phoneInstruction;
 
         // 1. Configure Session (Native xAI Style)
