@@ -130,7 +130,8 @@ wss.on("connection", (twilioWs, req) => {
         // Dynamic System Data
         const now = new Date().toLocaleString("en-US", { timeZone: "America/New_York" });
         const timeInstruction = `\nCURRENT TIME (EST): ${now}. You MUST use this time.`;
-        const fullInstructions = systemInstructions + timeInstruction;
+        const phoneInstruction = `\nCALLER PHONE NUMBER: ${callerId}. You ALREADY have this number. Do NOT ask for it. Just confirm it ("Is the best number ${callerId}?") if needed.`;
+        const fullInstructions = systemInstructions + timeInstruction + phoneInstruction;
 
         // 1. Configure Session (Native xAI Style)
         const sessionConfig = {
