@@ -145,7 +145,12 @@ wss.on("connection", (twilioWs, req) => {
                     input: { format: { type: "audio/pcmu", rate: 8000 } },
                     output: { format: { type: "audio/pcmu", rate: 8000 } }
                 },
-                turn_detection: { type: "server_vad" }
+                turn_detection: {
+                    type: "server_vad",
+                    threshold: 0.5,
+                    prefix_padding_ms: 300,
+                    silence_duration_ms: 800 // Wait 800ms of silence before taking turn (Chill factor)
+                }
             }
         };
         console.log("Sending Session Config (Native u-law 8k)...");
